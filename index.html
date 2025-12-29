@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSINT Search - LeakOSINT API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .search-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        input[type="text"],
+        select {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+            transition: all 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .search-button:active {
+            transform: translateY(0);
+        }
+
+        .search-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .result-info {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .result-data {
+            margin-top: 20px;
+        }
+
+        .data-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .data-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .data-item span {
+            color: #555;
+            word-break: break-word;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 1.1rem;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #1565c0;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 OSINT Search</h1>
+            <p>Search across multiple databases using LeakOSINT API</p>
+        </div>
+
+        <div class="search-card">
+            <form class="search-form" id="searchForm">
+                <div class="form-group">
+                    <label for="searchQuery">Search Query</label>
+                    <textarea 
+                        id="searchQuery" 
+                        placeholder="Enter your search query (email, name, phone, etc.)&#10;You can enter multiple queries, one per line"
+                        required
+                    ></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="searchLimit">Search Limit</label>
+                        <select id="searchLimit">
+                            <option value="100" selected>100 (Default)</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                            <option value="1000">1000</option>
+                            <option value="5000">5000</option>
+                            <option value="10000">10000 (Max)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="searchLang">Language</label>
+                        <select id="searchLang">
+                            <option value="en" selected>English (en)</option>
+                            <option value="ru">Russian (ru)</option>
+                            <option value="es">Spanish (es)</option>
+                            <option value="fr">French (fr)</option>
+                            <option value="de">German (de)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <strong>💡 Tips:</strong>
+                    Use double quotes for exact phrase search. Dates, short strings (&lt;4 chars), and short numbers (&lt;6 digits) are ignored in word count.
+                </div>
+
+                <button type="submit" class="search-button" id="searchButton">
+                    Search
+                </button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 15px; color: #666;">Searching databases...</p>
+            </div>
+        </div>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        // Use the proxy API endpoint to avoid CORS issues
+        const API_URL = '/api/search';
+
+        const searchForm = document.getElementById('searchForm');
+        const searchButton = document.getElementById('searchButton');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const query = document.getElementById('searchQuery').value.trim();
+            const limit = parseInt(document.getElementById('searchLimit').value);
+            const lang = document.getElementById('searchLang').value;
+
+            if (!query) {
+                alert('Please enter a search query');
+                return;
+            }
+
+            // Show loading, hide results
+            loading.classList.add('active');
+            results.classList.remove('active');
+            searchButton.disabled = true;
+
+            try {
+                // Prepare request data (token is handled server-side)
+                const requestData = {
+                    request: query,
+                    limit: limit,
+                    lang: lang,
+                    type: 'json'
+                };
+
+                // Make API request to our proxy endpoint
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                // Check if response is ok
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Hide loading
+                loading.classList.remove('active');
+                searchButton.disabled = false;
+
+                // Check for API errors
+                if (data['Error code']) {
+                    displayError(data['Error code']);
+                    return;
+                }
+
+                // Check for proxy errors
+                if (data.error) {
+                    displayError(data.error + (data.message ? ': ' + data.message : ''));
+                    return;
+                }
+
+                // Display results
+                displayResults(data);
+
+            } catch (error) {
+                loading.classList.remove('active');
+                searchButton.disabled = false;
+                displayError('Network error: ' + error.message);
+            }
+        });
+
+        function displayError(errorMessage) {
+            results.innerHTML = `
+                <div class="result-card">
+                    <div class="error">
+                        <strong>Error:</strong> ${errorMessage}
+                    </div>
+                </div>
+            `;
+            results.classList.add('active');
+        }
+
+        function displayResults(data) {
+            if (!data || !data.List) {
+                displayError('Invalid response from API');
+                return;
+            }
+
+            let html = '';
+            const databases = Object.keys(data.List);
+
+            if (databases.length === 0 || (databases.length === 1 && databases[0] === 'No results found')) {
+                html = `
+                    <div class="result-card">
+                        <div class="no-results">
+                            <h3>No results found</h3>
+                            <p>Try adjusting your search query or increasing the search limit.</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                databases.forEach(databaseName => {
+                    const database = data.List[databaseName];
+                    
+                    html += `
+                        <div class="result-card">
+                            <div class="result-header">
+                                <div class="result-title">${escapeHtml(databaseName)}</div>
+                                <div class="result-info">${database.Data ? database.Data.length : 0} result(s)</div>
+                            </div>
+                            
+                            ${database.InfoLeak ? `
+                                <div class="info-box">
+                                    <strong>Info:</strong> ${escapeHtml(database.InfoLeak)}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="result-data">
+                    `;
+
+                    if (database.Data && database.Data.length > 0) {
+                        database.Data.forEach(item => {
+                            html += '<div class="data-item">';
+                            Object.keys(item).forEach(key => {
+                                html += `
+                                    <strong>${escapeHtml(key)}:</strong>
+                                    <span>${escapeHtml(item[key])}</span>
+                                `;
+                            });
+                            html += '</div>';
+                        });
+                    } else {
+                        html += '<div class="no-results">No data available for this database</div>';
+                    }
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            results.innerHTML = html;
+            results.classList.add('active');
+            
+            // Scroll to results
+            results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
