@@ -109,6 +109,12 @@
             font-style: italic;
         }
 
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
         .form-group {
             margin-bottom: 20px;
         }
@@ -284,6 +290,10 @@
             font-size: 10px;
             font-weight: bold;
             text-transform: uppercase;
+        }
+
+        .result-data {
+            margin-top: 20px;
         }
 
         .data-item {
@@ -463,8 +473,8 @@
     </div>
 
     <script>
-        // Use the Vercel proxy endpoint
-        const API_URL = 'https://leak-proxy.vercel.app/api/search';
+        // Use the proxy API endpoint to avoid CORS issues
+        const API_URL = '/api/search';
 
         const searchForm = document.getElementById('searchForm');
         const searchButton = document.getElementById('searchButton');
@@ -491,6 +501,7 @@
             searchButton.disabled = true;
 
             try {
+                // Prepare request data (token is handled server-side)
                 const requestData = {
                     request: query,
                     limit: limit,
@@ -498,6 +509,7 @@
                     type: 'json'
                 };
 
+                // Make API request to our proxy endpoint
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -506,9 +518,10 @@
                     body: JSON.stringify(requestData)
                 });
 
+                // Check if response is ok
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
 
                 const data = await response.json();
@@ -517,18 +530,21 @@
                 searchButton.disabled = false;
                 statusText.textContent = 'Complete';
 
+                // Check for API errors
                 if (data['Error code']) {
                     displayError(`API Error ${data['Error code']}: ${data['Error'] || 'Unknown error'}`);
                     statusText.textContent = 'Error';
                     return;
                 }
 
+                // Check for proxy errors
                 if (data.error) {
                     displayError(data.error + (data.message ? ': ' + data.message : ''));
                     statusText.textContent = 'Error';
                     return;
                 }
 
+                // Display results
                 displayResults(data);
 
             } catch (error) {
@@ -597,7 +613,7 @@
                             html += '<div class="data-item">';
                             Object.keys(item).forEach(key => {
                                 html += `
-                                    <strong>${escapeHtml(key)}</strong>
+                                    <strong>${escapeHtml(key)}:</strong>
                                     <span>${escapeHtml(item[key])}</span>
                                 `;
                             });
@@ -617,7 +633,7 @@
             results.innerHTML = html;
             results.classList.add('active');
             
-            // Smooth scroll to results
+            // Scroll to results
             results.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
